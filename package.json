@@ -9,12 +9,13 @@
     "deploy": "vercel --prod"
   },
   "devDependencies": {
+    "sass-embedded": "^1.91.0",
     "vercel": "^41.4.1",
     "vite": "^6.2.2",
     "vite-plugin-restart": "^0.4.2"
   },
   "dependencies": {
     "lil-gui": "^0.20.0",
-    "three": "^0.174.0"
+    "three": "^0.179.1"
   }
 }

@@ -1,13 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>☕ Coffee Table Configurator</title>
-    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./style.scss">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body>
     <canvas class="webgl"></canvas>
+
+    <div id="nav-bar">
+        <input id="nav-toggle" type="checkbox" />
+        <div id="nav-header">
+            <a id="nav-title">
+                CONFIGURATOR
+            </a>
+            <label for="nav-toggle">
+                <span id="nav-toggle-burger"></span>
+            </label>
+            <hr />
+        </div>
+
+        <div id="nav-content">
+            <div class="nav-button">
+                <i class="fas fa-circle"></i>
+                <span class="nav-text">
+                    <span>Top Material</span>
+                    <span class="nav-option-subtext">Glass</span>
+                </span>
+            </div>
+
+            <hr />
+
+            <div class="nav-button">
+                <i class="fas fa-square"></i>
+                <span class="nav-text">
+                    <span>Base Material</span>
+                    <span class="nav-option-subtext">Plaster</span>
+                </span>
+            </div>
+
+            <hr />
+
+            <div class="nav-button">
+                <i class="fas fa-shapes"></i>
+                <span class="nav-text">
+                    <span>Top Shape</span>
+                    <span class="nav-option-subtext">Circle</span>
+                </span>
+            </div>
+
+            <div id="nav-content-highlight"></div>
+        </div>
+    </div>
+
     <script type="module" src="./script.js"></script>
+    <script type="module" src="./ui_script.js"></script>
+
 </body>
+
 </html>
