@@ -318,3 +318,44 @@ label[for="nav-toggle"] {
     display: flex;
     flex-direction: column;
 }
+
+#top-material-button,
+#base-material-button,
+#top-shape-button {
+    position: relative;
+
+    .nav-dots {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: center;
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: auto;
+    }
+
+    .nav-dot {
+        width: 5px;
+        height: 5px;
+        min-width: 5px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(51, 51, 51, 0.12);
+        transition: transform .18s ease, background-color .22s ease, box-shadow .18s ease;
+        cursor: pointer;
+        padding: 0;
+        outline: none;
+
+        &:focus {
+            transform: scale(1.18);
+            box-shadow: 0 0 0 4px rgba(51, 51, 51, 0.25);
+        }
+
+        &.active {
+            transform: scale(1.28);
+            box-shadow: 0 6px 12px rgba(51, 51, 51, 0.25);
+        }
+    }
+}

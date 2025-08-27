@@ -103,7 +103,7 @@ const baseHeight = 0.8
 const baseTopWidth = 0.45
 const baseBottomWidth = 0.7
 const bevel = 0.01
-const bevelHeight = 0.05
+const bevelHeight = 0.04
 
 const coffeeTable = new THREE.Group()
 
@@ -270,6 +270,18 @@ export function setTableTopMaterial(type) {
     if (!tableMaterials[type]) return
     tableTop.material = tableMaterials[type]
     tableTop.material.needsUpdate = true
+}
+
+export function setBaseMaterial(type) {
+    if (!tableMaterials[type]) return
+    tableBase.material = tableMaterials[type]
+    tableBase.material.needsUpdate = true
+    tableFooter.material = tableMaterials[type]
+    tableFooter.material.needsUpdate = true
+}
+
+export function setTableTopShape(type) {
+    // TODO
 }
 
 /**
