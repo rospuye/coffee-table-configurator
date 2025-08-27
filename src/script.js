@@ -8,11 +8,16 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js'
 /* ========================================================
    Config / Constants
    ======================================================== */
+
 const CANVAS_SELECTOR = 'canvas.webgl'
+
 const DEFAULT_TOP_WIDTH = 1
 const DEFAULT_BASE_HEIGHT = 0.8
 const DEFAULT_BEVEL = 0.01
 const DEFAULT_BEVEL_HEIGHT = 0.04
+
+const SCALE_MIN = 0.5
+const SCALE_MAX = 1.5
 
 /* ========================================================
    Scene state
@@ -35,22 +40,57 @@ renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 /* Controls */
-const controls = new OrbitControls(camera, canvas)
-controls.enableDamping = true
+const orbitControls = new OrbitControls(camera, canvas)
+orbitControls.enableDamping = true
 
 /* Transform controls (gizmo) */
 const transformControls = new TransformControls(camera, renderer.domElement)
 transformControls.setMode('scale')
 transformControls.visible = false
 transformControls.showX = true
-transformControls.showY = true
+transformControls.showY = false
 transformControls.showZ = true
-transformControls.addEventListener('dragging-changed', (e) => {
-    controls.enabled = !e.value
-})
-scene.add(transformControls.getHelper())
+transformControls.setScaleSnap(0.1)
 
-/* Raycaster for picking */
+// prevent orbit controls when using transform controls
+transformControls.addEventListener('mouseDown', function () {
+    orbitControls.enabled = false
+});
+transformControls.addEventListener('mouseUp', function () {
+    orbitControls.enabled = true
+});
+
+const transformControlsGizmo = transformControls.getHelper()
+scene.add(transformControlsGizmo)
+
+transformControls.setColors('#AEC3B0', '#000000', '#598392', '#EFF6E0', '#124559')
+
+function clampScaleForObject(obj) {
+    if (!obj || !obj.scale) return
+    // enforce per-axis limits
+    obj.scale.x = Math.min(SCALE_MAX, Math.max(SCALE_MIN, obj.scale.x))
+    obj.scale.y = Math.min(SCALE_MAX, Math.max(SCALE_MIN, obj.scale.y))
+    obj.scale.z = Math.min(SCALE_MAX, Math.max(SCALE_MIN, obj.scale.z))
+    // ensure matrices are updated
+    obj.updateMatrix()
+    obj.updateMatrixWorld(true)
+}
+
+// keep the controls from ever exceeding the limits while user is interacting
+transformControls.addEventListener('objectChange', () => {
+    if (!transformControls.object) return
+    if (transformControls.mode === 'scale') {
+        clampScaleForObject(transformControls.object)
+
+        // Lock X and Z for the circle tabletop
+        if (activeTop && transformControls.object === activeTop && activeTop.name === 'tableTop_circle') {
+            activeTop.scale.z = activeTop.scale.x
+        }
+    }
+})
+
+
+/* Raycaster */
 const raycaster = new THREE.Raycaster()
 const pointer = new THREE.Vector2()
 
@@ -60,9 +100,10 @@ const texLoader = new THREE.TextureLoader(manager)
 const hdrLoader = new RGBELoader(manager)
 const exrLoader = new EXRLoader(manager)
 
-/* Scene objects we'll refer to later */
+/* Scene objects */
 const coffeeTable = new THREE.Group()
-let tableTop = null
+let tableTops = {}
+let activeTop = null
 let tableBase = null
 let tableFooter = null
 
@@ -248,7 +289,7 @@ function makeTableTopGeometry({ shape = 'circle', topWidth = DEFAULT_TOP_WIDTH, 
     }
 
     switch ((shape || 'circle').toLowerCase()) {
-        case 'square': {
+        case 'rectangle': {
             const side = topWidth * 2
             const shapePath = new THREE.Shape()
             shapePath.moveTo(-side / 2, -side / 2)
@@ -262,7 +303,7 @@ function makeTableTopGeometry({ shape = 'circle', topWidth = DEFAULT_TOP_WIDTH, 
             break
         }
 
-        case 'oval': {
+        case 'ellipse': {
             const rx = topWidth * 1.6
             const ry = topWidth * 1.0
             const shapePath = new THREE.Shape()
@@ -285,30 +326,35 @@ function makeTableTopGeometry({ shape = 'circle', topWidth = DEFAULT_TOP_WIDTH, 
 }
 
 function createTable({ topWidth = DEFAULT_TOP_WIDTH, baseHeight = DEFAULT_BASE_HEIGHT, baseTopWidth = 0.45, baseBottomWidth = 0.7, bevel = DEFAULT_BEVEL, bevelHeight = DEFAULT_BEVEL_HEIGHT } = {}) {
-    // Top
-    const tableTopGeom = makeTableTopGeometry({ shape: 'oval', topWidth, bevel, bevelHeight })
     const defaultMaterial = tableMaterials.wood || new THREE.MeshStandardMaterial({ color: 0x7f7f7f })
-    tableTop = new THREE.Mesh(tableTopGeom, defaultMaterial)
-    tableTop.name = 'tableTop'
-    tableTop.position.y = (baseHeight + bevelHeight) / 2
 
-    // Base
+    coffeeTable.clear()
+    tableTops = {}
+
+    const shapes = ['circle', 'ellipse', 'rectangle']
+    shapes.forEach((shape) => {
+        const geom = makeTableTopGeometry({ shape, topWidth, bevel, bevelHeight })
+        const mesh = new THREE.Mesh(geom, defaultMaterial)
+        mesh.name = `tableTop_${shape}`
+        mesh.position.y = (baseHeight + bevelHeight) / 2
+        mesh.visible = (shape === 'ellipse') // default visible
+        tableTops[shape] = mesh
+        coffeeTable.add(mesh)
+    })
+    activeTop = tableTops.ellipse
+
     const tableBaseGeom = new THREE.CylinderGeometry(baseTopWidth, baseBottomWidth, baseHeight, 64)
     tableBaseGeom.computeVertexNormals()
     tableBase = new THREE.Mesh(tableBaseGeom, tableMaterials.plaster || defaultMaterial)
 
-    // Footer
     const tableFooterGeom = new THREE.CylinderGeometry(baseBottomWidth, baseBottomWidth - bevel, bevelHeight, 64)
     tableFooter = new THREE.Mesh(tableFooterGeom, tableBase.material)
     tableFooter.position.y = -(baseHeight + bevelHeight) / 2
 
-    // group
-    coffeeTable.clear()
-    coffeeTable.add(tableTop)
     coffeeTable.add(tableBase)
     coffeeTable.add(tableFooter)
-    scene.add(coffeeTable)
 }
+
 
 /* ========================================================
    Event listeners: resize, pointer/pick, keyboard
@@ -347,16 +393,17 @@ canvas.addEventListener('pointerup', (ev) => {
     pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1
 
     // pick only tableTop (if present)
-    if (!tableTop) {
+    if (!activeTop) {
         // nothing to pick
         if (!transformControls.dragging) detachTransform()
         return
     }
 
     raycaster.setFromCamera(pointer, camera)
-    const intersects = raycaster.intersectObject(tableTop, true)
-    if (intersects.length > 0) {
-        attachToObject(intersects[0].object)
+
+    const intersect = raycaster.intersectObject(activeTop, true)
+    if (intersect.length > 0) {
+        attachToObject(intersect[0].object)
     } else {
         if (!transformControls.dragging) detachTransform()
     }
@@ -372,8 +419,22 @@ window.addEventListener('keydown', (e) => {
 function attachToObject(object) {
     transformControls.attach(object)
     transformControls.setMode('scale')
+
+    // If it's the circle tabletop: show only X axis (but sync Z)
+    if (activeTop && object === activeTop && activeTop.name === 'tableTop_circle') {
+        transformControls.showX = true
+        transformControls.showY = false
+        transformControls.showZ = false
+    } else {
+        // For other shapes, default X/Z
+        transformControls.showX = true
+        transformControls.showY = false
+        transformControls.showZ = true
+    }
+
     transformControls.visible = true
 }
+
 
 function detachTransform() {
     if (transformControls.object) transformControls.detach()
@@ -406,36 +467,27 @@ function setupLights() {
    - setBaseMaterial(type)
    ======================================================== */
 export function setTableTopShape(type) {
-    if (!tableTop) return
-    // remember transform state
-    const savedMat = tableTop.material
-    const savedName = tableTop.name
-    const savedPos = tableTop.position.clone()
-    const savedRot = tableTop.rotation.clone()
-    const savedScale = tableTop.scale.clone()
+    if (!tableTops || !tableTops[type]) return
+    Object.keys(tableTops).forEach(shape => {
+        tableTops[shape].visible = (shape === type)
+    })
+    activeTop = tableTops[type]
 
-    // create new geometry for requested shape and apply UVs
-    const newGeom = makeTableTopGeometry({ shape: type || 'circle' })
-    if (!newGeom) return
-
-    // replace geometry and restore transforms/material
-    const oldGeom = tableTop.geometry
-    tableTop.geometry = newGeom
-    tableTop.material = savedMat
-    tableTop.name = savedName
-    tableTop.position.copy(savedPos)
-    tableTop.rotation.copy(savedRot)
-    tableTop.scale.copy(savedScale)
-
-    // dispose old geometry
-    try { if (oldGeom) oldGeom.dispose() } catch (err) { /* ignore */ }
+    // detach and re-attach transform controls
+    if (transformControls.object) {
+        detachTransform()
+        attachToObject(activeTop)
+    }
 }
 
 export function setTableTopMaterial(type) {
-    if (!tableMaterials[type] || !tableTop) return
-    tableTop.material = tableMaterials[type]
-    tableTop.material.needsUpdate = true
+    if (!tableMaterials[type] || !tableTops) return
+    Object.values(tableTops).forEach(mesh => {
+        mesh.material = tableMaterials[type]
+        mesh.material.needsUpdate = true
+    })
 }
+
 
 export function setBaseMaterial(type) {
     if (!tableMaterials[type] || !tableBase || !tableFooter) return
@@ -522,8 +574,13 @@ export async function init() {
 
     // apply initial default materials if available
     if (tableMaterials.wood) {
-        tableTop.material = tableMaterials.wood
-        tableTop.material.needsUpdate = true
+        // iterate all tops
+        Object.values(tableTops).forEach(mesh => {
+            mesh.material = tableMaterials.wood
+            mesh.material.needsUpdate = true
+        })
+        // tableTop.material = tableMaterials.wood
+        // tableTop.material.needsUpdate = true
     }
     if (tableMaterials.plaster) {
         tableBase.material = tableMaterials.plaster
@@ -541,7 +598,7 @@ export async function init() {
    ======================================================== */
 function tick() {
     const elapsed = clock.getElapsedTime()
-    controls.update()
+    orbitControls.update()
     renderer.render(scene, camera)
     window.requestAnimationFrame(tick)
 }

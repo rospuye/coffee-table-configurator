@@ -119,8 +119,8 @@ initMaterialControl(
 
 initMaterialControl(
     '#top-shape-button',
-    ["Circle", "Oval", "Square"],
-    ["circle", "oval", "square"],
+    ["Circle", "Ellipse", "Rectangle"],
+    ["circle", "ellipse", "rectangle"],
     setTableTopShape,
     1 // starting with "Circle"
 );
