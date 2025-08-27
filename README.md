@@ -1,6 +1,6 @@
 # Coffee Table Configurator
 
-A polished 3D coffee table configurator built with React Three Fiber / Three.js. It features parametric tabletops (adjustable size & shape), material options including wood veneer, and smooth interactive controls. Inspired by modern coffee table designs, it demonstrates a minimal yet finished product customization experience.
+A polished 3D coffee table configurator built with Three.js. It features parametric tabletops (adjustable size & shape), material options including wood veneer, and smooth interactive controls. Inspired by modern coffee table designs, it demonstrates a minimal yet finished product customization experience.
 
 ## 🌐 Live Demo
 [Try it here!](https://your-demo-link.com)
