@@ -24,12 +24,14 @@ function initMaterialControl(containerSel, materials, materialKeys, setMaterialF
             if (isActive) {
                 dot.classList.add('active');
                 // If the container is hovered use the hover color, otherwise selected color.
-                dot.style.backgroundColor = container.matches(':hover') ? "#ffe9a0" : "#C4864A";
+                dot.style.backgroundColor = "#ffe9a0";
+                // dot.style.backgroundColor = container.matches(':hover') ? "#ffe9a0" : "#C4864A";
                 dot.setAttribute('aria-selected', 'true');
                 dot.setAttribute('tabindex', '0');
             } else {
                 dot.classList.remove('active');
-                dot.style.backgroundColor = container.matches(':hover') ? 'rgba(51,51,51,0.30)' : 'rgba(51,51,51,0.12)';
+                dot.style.backgroundColor = 'rgba(51,51,51,0.30)';
+                // dot.style.backgroundColor = container.matches(':hover') ? 'rgba(51,51,51,0.30)' : 'rgba(51,51,51,0.12)';
                 dot.setAttribute('aria-selected', 'false');
                 dot.setAttribute('tabindex', '-1');
             }
@@ -58,18 +60,18 @@ function initMaterialControl(containerSel, materials, materialKeys, setMaterialF
         }, 150);
     });
 
-    // hover visual behavior
-    container.addEventListener('mouseenter', () => {
-        dots.forEach((dot, i) => {
-            dot.style.backgroundColor = (i === currentIndex) ? "#ffe9a0" : 'rgba(51,51,51,0.30)';
-        });
-    });
+    // // hover visual behavior
+    // container.addEventListener('mouseenter', () => {
+    //     dots.forEach((dot, i) => {
+    //         dot.style.backgroundColor = (i === currentIndex) ? "#ffe9a0" : 'rgba(51,51,51,0.30)';
+    //     });
+    // });
 
-    container.addEventListener('mouseleave', () => {
-        dots.forEach((dot, i) => {
-            dot.style.backgroundColor = (i === currentIndex) ? "#C4864A" : 'rgba(51,51,51,0.12)';
-        });
-    });
+    // container.addEventListener('mouseleave', () => {
+    //     dots.forEach((dot, i) => {
+    //         dot.style.backgroundColor = (i === currentIndex) ? "#C4864A" : 'rgba(51,51,51,0.12)';
+    //     });
+    // });
 
     // dot click & keyboard handling (use index based on order in DOM)
     dots.forEach((dot, i) => {
@@ -104,7 +106,7 @@ initMaterialControl(
     ["Glass", "Veneer Wood", "Plaster"],
     ["glass", "wood", "plaster"],
     setTableTopMaterial,
-    0 // starting with "Glass"
+    1 // starting with "Glass"
 );
 
 initMaterialControl(
@@ -120,5 +122,5 @@ initMaterialControl(
     ["Circle", "Oval", "Square"],
     ["circle", "oval", "square"],
     setTableTopShape,
-    0 // starting with "Circle"
+    1 // starting with "Circle"
 );

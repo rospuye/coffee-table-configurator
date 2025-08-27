@@ -256,7 +256,7 @@ manager.onLoad = () => {
     tableMaterials.wood = woodMaterial
     tableMaterials.plaster = plasterMaterial
 
-    tableTop.material = tableMaterials.glass
+    tableTop.material = tableMaterials.wood
     tableTop.material.needsUpdate = true
 
     tableBase.material = plasterMaterial
@@ -280,9 +280,166 @@ export function setBaseMaterial(type) {
     tableFooter.material.needsUpdate = true
 }
 
-export function setTableTopShape(type) {
-    // TODO
+// helper: ensure we are working with a BufferGeometry
+function ensureBufferGeometry(geom) {
+    if (!geom) return geom
+    if (geom.isBufferGeometry) return geom
+    // older three.js had Geometry -> convert if available
+    if (typeof THREE.BufferGeometry.prototype.fromGeometry === 'function' && geom.isGeometry) {
+        return new THREE.BufferGeometry().fromGeometry(geom)
+    }
+    return geom
 }
+
+/**
+ * Apply planar UVs by projecting onto the XZ plane.
+ * - geom: BufferGeometry (or Geometry)
+ * - options:
+ *     mode: 'planar' (default) | 'polarForCircle'  // polar useful for circle shape
+ *     padding: number (optional, leave 0)
+ */
+function applyPlanarUVs(geom, { mode = 'planar', padding = 0 } = {}) {
+    geom = ensureBufferGeometry(geom)
+    const pos = geom.attributes.position
+    if (!pos) return
+
+    // ensure bounding box
+    geom.computeBoundingBox()
+    const bbox = geom.boundingBox
+
+    // we'll project onto XZ plane (Y is thickness)
+    const minX = bbox.min.x
+    const maxX = bbox.max.x
+    const minZ = bbox.min.z
+    const maxZ = bbox.max.z
+    const spanX = Math.max(maxX - minX, 1e-6)
+    const spanZ = Math.max(maxZ - minZ, 1e-6)
+
+    // For polar mode we need the max radius
+    let maxRadius = 0
+    if (mode === 'polarForCircle') {
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i)
+            const z = pos.getZ(i)
+            const r = Math.sqrt(x * x + z * z)
+            if (r > maxRadius) maxRadius = r
+        }
+        maxRadius = Math.max(maxRadius, 1e-6)
+    }
+
+    const uv = new Float32Array(pos.count * 2)
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i)
+        const z = pos.getZ(i)
+
+        if (mode === 'polarForCircle') {
+            // angle -> u, radius -> v
+            const angle = Math.atan2(z, x) // -PI..PI
+            const u = 0.5 + (angle / (2 * Math.PI)) // 0..1 wrapped by angle
+            const r = Math.sqrt(x * x + z * z) / maxRadius // 0..1 radius
+            const v = r
+            // add optional padding by scaling towards 0.5
+            uv[i * 2] = (u - 0.5) * (1 - padding) + 0.5
+            uv[i * 2 + 1] = v * (1 - padding) + padding * 0.5
+        } else {
+            // planar projection XZ -> (u,v)
+            const u = (x - minX) / spanX
+            const v = (z - minZ) / spanZ
+            uv[i * 2] = u * (1 - padding) + padding * 0.5
+            uv[i * 2 + 1] = v * (1 - padding) + padding * 0.5
+        }
+    }
+
+    geom.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+    // copy uv -> uv2 for AO maps
+    geom.setAttribute('uv2', new THREE.BufferAttribute(uv.slice(), 2))
+
+    // ensure normals are present
+    if (!geom.attributes.normal) geom.computeVertexNormals()
+}
+
+/**
+ * Set the table top shape and correctly generate UVs so materials look right.
+ * shapes: 'circle' (default), 'square', 'oval'
+ */
+export function setTableTopShape(type) {
+    const oldGeom = tableTop.geometry
+    const currentMaterial = tableTop.material
+    const savedName = tableTop.name
+    const savedPos = tableTop.position.clone()
+    const savedRot = tableTop.rotation.clone()
+    const savedScale = tableTop.scale.clone()
+
+    let newGeom
+
+    // helper used earlier: align extruded z-depth to Y axis
+    const centerExtrude = (geom, depth) => {
+        // extrude produces depth along +Z; move and rotate to get thickness along Y
+        geom.translate(0, 0, -depth / 2)
+        geom.rotateX(-Math.PI / 2)
+    }
+
+    switch ((type || 'circle').toLowerCase()) {
+        case 'square': {
+            const side = topWidth * 2
+            const w = side, h = side
+            const shape = new THREE.Shape()
+            shape.moveTo(-w / 2, -h / 2)
+            shape.lineTo(w / 2, -h / 2)
+            shape.lineTo(w / 2, h / 2)
+            shape.lineTo(-w / 2, h / 2)
+            shape.closePath()
+
+            const extrudeSettings = { depth: bevelHeight, bevelEnabled: false, curveSegments: 8 }
+            newGeom = new THREE.ExtrudeGeometry(shape, extrudeSettings)
+            centerExtrude(newGeom, bevelHeight)
+            break
+        }
+        case 'oval': {
+            // create ellipse shape (XZ radii)
+            const rx = topWidth * 1.6
+            const ry = topWidth * 1.0
+            const shape = new THREE.Shape()
+            shape.absellipse(0, 0, rx, ry, 0, Math.PI * 2, false, 0)
+
+            const extrudeSettings = { depth: bevelHeight, bevelEnabled: false, curveSegments: 64 }
+            newGeom = new THREE.ExtrudeGeometry(shape, extrudeSettings)
+            centerExtrude(newGeom, bevelHeight)
+            break
+        }
+        case 'circle':
+        default: {
+            newGeom = new THREE.CylinderGeometry(topWidth, topWidth - bevel, bevelHeight, 64)
+            break
+        }
+    }
+
+    if (!newGeom) return
+
+    // convert to BufferGeometry if necessary
+    newGeom = ensureBufferGeometry(newGeom)
+
+    // Apply UV mapping: use planar XZ projection so textures align predictably
+    applyPlanarUVs(newGeom, { mode: 'planar' })
+
+    // ensure normals
+    if (!newGeom.attributes.normal) newGeom.computeVertexNormals()
+
+    // replace geometry and reapply material
+    tableTop.geometry = newGeom
+    tableTop.material = currentMaterial
+    tableTop.material.needsUpdate = true
+
+    // restore transforms/properties
+    tableTop.name = savedName
+    tableTop.position.copy(savedPos)
+    tableTop.rotation.copy(savedRot)
+    tableTop.scale.copy(savedScale)
+
+    // dispose old geometry to avoid leaks
+    try { if (oldGeom) oldGeom.dispose() } catch (e) { /* ignore */ }
+}
+
 
 /**
  * Animate
