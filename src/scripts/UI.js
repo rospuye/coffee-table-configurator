@@ -1,5 +1,5 @@
 // ui_script.js (replace your current file)
-import { setTableTopMaterial, setBaseMaterial, setTableTopShape } from './script.js';
+import { setTableTopMaterial, setBaseMaterial, setTableTopShape } from './table.js';
 
 /**
  * Initialize a material selector control.
