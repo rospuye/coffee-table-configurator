@@ -16,8 +16,10 @@ const DEFAULT_BASE_HEIGHT = 0.8
 const DEFAULT_BEVEL = 0.01
 const DEFAULT_BEVEL_HEIGHT = 0.04
 
-const SCALE_MIN = 0.5
-const SCALE_MAX = 1.5
+const TOP_SCALE_MIN = 0.6
+const TOP_SCALE_MAX = 1.5
+const BASE_SCALE_MIN = 0.8
+const BASE_SCALE_MAX = 1.2
 
 /* ========================================================
    Scene state
@@ -65,12 +67,18 @@ scene.add(transformControlsGizmo)
 
 transformControls.setColors('#AEC3B0', '#000000', '#598392', '#EFF6E0', '#124559')
 
+
 function clampScaleForObject(obj) {
     if (!obj || !obj.scale) return
+
     // enforce per-axis limits
-    obj.scale.x = Math.min(SCALE_MAX, Math.max(SCALE_MIN, obj.scale.x))
-    obj.scale.y = Math.min(SCALE_MAX, Math.max(SCALE_MIN, obj.scale.y))
-    obj.scale.z = Math.min(SCALE_MAX, Math.max(SCALE_MIN, obj.scale.z))
+    obj.scale.x = Math.min((obj.name.startsWith('tableTop_') ? TOP_SCALE_MAX : BASE_SCALE_MAX),
+        Math.max((obj.name.startsWith('tableTop_') ? TOP_SCALE_MIN : BASE_SCALE_MIN), obj.scale.x))
+    obj.scale.y = Math.min((obj.name.startsWith('tableTop_') ? TOP_SCALE_MAX : BASE_SCALE_MAX),
+        Math.max((obj.name.startsWith('tableTop_') ? TOP_SCALE_MIN : BASE_SCALE_MIN), obj.scale.y))
+    obj.scale.z = Math.min((obj.name.startsWith('tableTop_') ? TOP_SCALE_MAX : BASE_SCALE_MAX),
+        Math.max((obj.name.startsWith('tableTop_') ? TOP_SCALE_MIN : BASE_SCALE_MIN), obj.scale.z))
+
     // ensure matrices are updated
     obj.updateMatrix()
     obj.updateMatrixWorld(true)
@@ -82,9 +90,15 @@ transformControls.addEventListener('objectChange', () => {
     if (transformControls.mode === 'scale') {
         clampScaleForObject(transformControls.object)
 
-        // Lock X and Z for the circle tabletop
-        if (activeTop && transformControls.object === activeTop && activeTop.name === 'tableTop_circle') {
-            activeTop.scale.z = activeTop.scale.x
+        // Lock X and Z for the circle tabletop and table base, or if Shift is being pressed
+        const isShiftPressed = (typeof window !== 'undefined') && (window.event ? window.event.shiftKey : false)
+        if (transformControls.object.name === 'tableTop_circle' || transformControls.object.name === "tableBase" || isShiftPressed) {
+            const axis = transformControls.axis
+            if (axis === 'X') {
+                transformControls.object.scale.z = transformControls.object.scale.x
+            } else if (axis === 'Z') {
+                transformControls.object.scale.x = transformControls.object.scale.z
+            }
         }
     }
 })
@@ -104,7 +118,8 @@ const exrLoader = new EXRLoader(manager)
 const coffeeTable = new THREE.Group()
 let tableTops = {}
 let activeTop = null
-let tableBase = null
+const tableBase = new THREE.Group()
+let tableTrunk = null
 let tableFooter = null
 
 scene.add(coffeeTable)
@@ -345,14 +360,17 @@ function createTable({ topWidth = DEFAULT_TOP_WIDTH, baseHeight = DEFAULT_BASE_H
 
     const tableBaseGeom = new THREE.CylinderGeometry(baseTopWidth, baseBottomWidth, baseHeight, 64)
     tableBaseGeom.computeVertexNormals()
-    tableBase = new THREE.Mesh(tableBaseGeom, tableMaterials.plaster || defaultMaterial)
+    tableTrunk = new THREE.Mesh(tableBaseGeom, tableMaterials.plaster || defaultMaterial)
 
     const tableFooterGeom = new THREE.CylinderGeometry(baseBottomWidth, baseBottomWidth - bevel, bevelHeight, 64)
-    tableFooter = new THREE.Mesh(tableFooterGeom, tableBase.material)
+    tableFooter = new THREE.Mesh(tableFooterGeom, tableTrunk.material)
     tableFooter.position.y = -(baseHeight + bevelHeight) / 2
 
+    tableBase.add(tableTrunk)
+    tableBase.add(tableFooter)
+    tableBase.name = 'tableBase'
+
     coffeeTable.add(tableBase)
-    coffeeTable.add(tableFooter)
 }
 
 
@@ -401,10 +419,31 @@ canvas.addEventListener('pointerup', (ev) => {
 
     raycaster.setFromCamera(pointer, camera)
 
-    const intersect = raycaster.intersectObject(activeTop, true)
+    const intersect = raycaster.intersectObjects([activeTop, tableBase], true);
     if (intersect.length > 0) {
-        attachToObject(intersect[0].object)
-    } else {
+        const targetNames = [
+            "tableBase",
+            "tableTop_circle",
+            "tableTop_rectangle",
+            "tableTop_ellipse"
+        ];
+
+        let target = intersect[0].object;
+        while (target && target.parent) {
+            if (targetNames.includes(target.name)) {
+                break;
+            }
+            target = target.parent;
+        }
+
+        if (target && targetNames.includes(target.name)) {
+            attachToObject(target);
+        } else {
+            console.warn("No matching parent found for intersection.");
+        }
+    }
+
+    else {
         if (!transformControls.dragging) detachTransform()
     }
 })
@@ -421,7 +460,8 @@ function attachToObject(object) {
     transformControls.setMode('scale')
 
     // If it's the circle tabletop: show only X axis (but sync Z)
-    if (activeTop && object === activeTop && activeTop.name === 'tableTop_circle') {
+    if ((activeTop && object === activeTop && activeTop.name === 'tableTop_circle')
+        || (tableBase && object === tableBase)) {
         transformControls.showX = true
         transformControls.showY = false
         transformControls.showZ = false
@@ -490,9 +530,9 @@ export function setTableTopMaterial(type) {
 
 
 export function setBaseMaterial(type) {
-    if (!tableMaterials[type] || !tableBase || !tableFooter) return
-    tableBase.material = tableMaterials[type]
-    tableBase.material.needsUpdate = true
+    if (!tableMaterials[type] || !tableTrunk || !tableFooter) return
+    tableTrunk.material = tableMaterials[type]
+    tableTrunk.material.needsUpdate = true
     tableFooter.material = tableMaterials[type]
     tableFooter.material.needsUpdate = true
 }
@@ -579,13 +619,11 @@ export async function init() {
             mesh.material = tableMaterials.wood
             mesh.material.needsUpdate = true
         })
-        // tableTop.material = tableMaterials.wood
-        // tableTop.material.needsUpdate = true
     }
     if (tableMaterials.plaster) {
-        tableBase.material = tableMaterials.plaster
+        tableTrunk.material = tableMaterials.plaster
         tableFooter.material = tableMaterials.plaster
-        tableBase.material.needsUpdate = true
+        tableTrunk.material.needsUpdate = true
         tableFooter.material.needsUpdate = true
     }
 
