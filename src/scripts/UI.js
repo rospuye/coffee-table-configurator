@@ -25,13 +25,11 @@ function initMaterialControl(containerSel, materials, materialKeys, setMaterialF
                 dot.classList.add('active');
                 // If the container is hovered use the hover color, otherwise selected color.
                 dot.style.backgroundColor = "#ffe9a0";
-                // dot.style.backgroundColor = container.matches(':hover') ? "#ffe9a0" : "#C4864A";
                 dot.setAttribute('aria-selected', 'true');
                 dot.setAttribute('tabindex', '0');
             } else {
                 dot.classList.remove('active');
                 dot.style.backgroundColor = 'rgba(51,51,51,0.30)';
-                // dot.style.backgroundColor = container.matches(':hover') ? 'rgba(51,51,51,0.30)' : 'rgba(51,51,51,0.12)';
                 dot.setAttribute('aria-selected', 'false');
                 dot.setAttribute('tabindex', '-1');
             }
@@ -59,19 +57,6 @@ function initMaterialControl(containerSel, materials, materialKeys, setMaterialF
             updateDots(currentIndex);
         }, 150);
     });
-
-    // // hover visual behavior
-    // container.addEventListener('mouseenter', () => {
-    //     dots.forEach((dot, i) => {
-    //         dot.style.backgroundColor = (i === currentIndex) ? "#ffe9a0" : 'rgba(51,51,51,0.30)';
-    //     });
-    // });
-
-    // container.addEventListener('mouseleave', () => {
-    //     dots.forEach((dot, i) => {
-    //         dot.style.backgroundColor = (i === currentIndex) ? "#C4864A" : 'rgba(51,51,51,0.12)';
-    //     });
-    // });
 
     // dot click & keyboard handling (use index based on order in DOM)
     dots.forEach((dot, i) => {
