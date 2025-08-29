@@ -80,10 +80,12 @@ export function createTable({ topWidth = DEFAULT_TOP_WIDTH, baseHeight = DEFAULT
     activeTop = tableTops.ellipse
 
     const tableBaseGeom = new THREE.CylinderGeometry(baseTopWidth, baseBottomWidth, baseHeight, 64)
+    applyPlanarUVs(tableBaseGeom)
     tableBaseGeom.computeVertexNormals()
     tableTrunk = new THREE.Mesh(tableBaseGeom, tableMaterials.plaster || defaultMaterial)
 
     const tableFooterGeom = new THREE.CylinderGeometry(baseBottomWidth, baseBottomWidth - bevel, bevelHeight, 64)
+    applyPlanarUVs(tableFooterGeom)
     tableFooter = new THREE.Mesh(tableFooterGeom, tableTrunk.material)
     tableFooter.position.y = -(baseHeight + bevelHeight) / 2
 
