@@ -114,7 +114,8 @@ body {
     position: absolute;
     left: 2vw;
     top: 2vw;
-    height: calc(33% - 2vw);
+    height: auto;
+    padding-bottom: 5px;
     background: var(--navbar-beige-primary);
     border-radius: 16px;
     display: flex;
@@ -220,8 +221,9 @@ label[for="nav-toggle"] {
     background: var(--navbar-beige-primary);
     box-shadow: 0 0 0 16px var(--navbar-beige-primary);
     direction: rtl;
-    overflow-x: visible;
-    overflow-y: auto;
+    // overflow-x: visible;
+    // overflow-y: auto;
+    overflow: hidden;
     transition: width 0.2s;
 
     &::-webkit-scrollbar {
