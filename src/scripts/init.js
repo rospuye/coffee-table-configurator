@@ -7,9 +7,50 @@ import { tableMaterials, buildMaterial } from './materials.js'
 import { createTable, coffeeTable } from './table.js'
 import { resetTransformControls } from './controls.js'
 
-const manager = new THREE.LoadingManager()
-const { loadTextureAsync, loadHDRAsync } = createLoaders(manager)
+// UI
+const loadingScreen = document.getElementById('loading-screen')
 
+const manager = new THREE.LoadingManager()
+
+// --- Progress tracker for operations that LoadingManager doesn't see ---
+let trackedTotal = 0
+let trackedDone = 0
+let managerDone = false
+let managerItemsLoaded = 0
+let managerItemsTotal = 0
+let trackedSchedulingFinished = false
+
+function finishLoading() {
+    loadingScreen.classList.add('hidden')
+}
+
+function checkFinishConditions() {
+    if (!managerDone) return
+    if (!trackedSchedulingFinished) return
+    if (trackedDone >= trackedTotal) finishLoading()
+}
+
+function track(promise, label) {
+    trackedTotal++
+    return promise.finally(() => {
+        trackedDone++
+        checkFinishConditions()
+    })
+}
+
+// Hook manager progress/load
+manager.onProgress = (url, itemsLoaded, itemsTotal) => {
+    managerItemsLoaded = itemsLoaded
+    managerItemsTotal = itemsTotal
+}
+
+manager.onLoad = () => {
+    managerDone = true
+    checkFinishConditions()
+}
+
+
+// Exports so other modules can access transform controls
 let clock = null
 let orbitControls = null
 let renderer = null
@@ -20,16 +61,16 @@ let transformHelper = null
 let isShiftPressed = false
 
 window.addEventListener('keydown', (e) => {
-    if (e.key === 'Shift') {
-        isShiftPressed = true;
+    if (e.key === 'Shift') isShiftPressed = true
+    if (e.key === 'Escape') {
+        if (transformControls && transformControls.object) transformControls.detach()
+        if (transformControls) transformControls.visible = false
     }
-});
+})
 
 window.addEventListener('keyup', (e) => {
-    if (e.key === 'Shift') {
-        isShiftPressed = false;
-    }
-});
+    if (e.key === 'Shift') isShiftPressed = false
+})
 
 export async function init() {
     const scenePack = createScene('canvas.webgl')
@@ -49,13 +90,19 @@ export async function init() {
     // add transform helper to scene
     scene.add(transformHelper)
 
-    // background
+    // create loaders bound to the manager
+    const { loadTextureAsync, loadHDRAsync, loadEXRAsync } = createLoaders(manager)
+
+    // background (track this load because we want to wait for decoding & texture setup)
     try {
-        const bg = await loadTextureAsync('textures/graph_paper.jpg')
+        const bgPromise = loadTextureAsync('textures/graph_paper.jpg')
+        const bg = await track(bgPromise, 'bgTexture')
         bg.wrapS = bg.wrapT = THREE.RepeatWrapping
         bg.repeat.set(3, 3)
         scene.background = bg
-    } catch (e) { }
+    } catch (e) {
+        console.warn('Failed to load background texture', e)
+    }
 
     // lights
     const ambient = new THREE.AmbientLight(0xffffff, 0.3)
@@ -69,15 +116,18 @@ export async function init() {
     dir2.position.set(-1, -1, 0)
     scene.add(dir2)
 
-    // HDR environment
+    // HDR environment (track to ensure decoding finishes before hiding the loading UI)
     try {
-        const hdrTex = await loadHDRAsync('textures/pine_attic_4k.hdr')
+        const hdrPromise = loadHDRAsync('textures/pine_attic_4k.hdr')
+        const hdrTex = await track(hdrPromise, 'hdrEnv')
         hdrTex.mapping = THREE.EquirectangularReflectionMapping
         hdrTex.intensity = 0.5
         scene.environment = hdrTex
-    } catch (e) { }
+    } catch (e) {
+        console.warn('Failed to load HDR environment', e)
+    }
 
-    // load pbr sets (parallel, tolerant)
+    // --- PBR texture sets ---
     const makeTextureFiles = (basePath, baseName) => ({
         ao: `${basePath}${baseName}_ao_4k.jpg`,
         arm: `${basePath}${baseName}_arm_4k.jpg`,
@@ -95,9 +145,12 @@ export async function init() {
     const woodFiles = makeTextureFiles(textureDefinitions.wood.basePath, textureDefinitions.wood.baseName)
     const plasterFiles = makeTextureFiles(textureDefinitions.plaster.basePath, textureDefinitions.plaster.baseName)
 
+    const woodPbrPromise = loadPBRTextureSet(woodFiles, loadTextureAsync, loadEXRAsync, manager)
+    const plasterPbrPromise = loadPBRTextureSet(plasterFiles, loadTextureAsync, loadEXRAsync, manager)
+
     const [woodMapsRes, plasterMapsRes] = await Promise.allSettled([
-        loadPBRTextureSet(woodFiles),
-        loadPBRTextureSet(plasterFiles)
+        track(woodPbrPromise, 'woodPBR'),
+        track(plasterPbrPromise, 'plasterPBR')
     ])
 
     tableMaterials.wood = buildMaterial(woodMapsRes.status === 'fulfilled' ? woodMapsRes.value : {})
@@ -110,7 +163,7 @@ export async function init() {
     // apply initial materials
     if (tableMaterials.wood) {
         Object.values(coffeeTable.children).forEach(child => {
-            if (child.name && child.name.startsWith('tableTop_')) {
+            if (child.name && child.name.startsWith('tableTop_') && child.isMesh) {
                 child.material = tableMaterials.wood
                 child.material.needsUpdate = true
             }
@@ -118,13 +171,10 @@ export async function init() {
     }
 
     if (tableMaterials.plaster) {
-        // find trunk/footer
         coffeeTable.traverse((c) => {
-            if (c.name === 'tableBase' || c.parent?.name === 'tableBase') {
-                if (c.isMesh) {
-                    c.material = tableMaterials.plaster
-                    c.material.needsUpdate = true
-                }
+            if ((c.name === 'tableBase' || c.parent?.name === 'tableBase') && c.isMesh) {
+                c.material = tableMaterials.plaster
+                c.material.needsUpdate = true
             }
         })
     }
@@ -175,20 +225,11 @@ export async function init() {
         }
     })
 
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            if (transformControls.object) transformControls.detach()
-            transformControls.visible = false
-        }
-    })
-
     // keep transform within limits while changing
     transformControls.addEventListener('objectChange', () => {
         if (!transformControls.object) return
         if (transformControls.mode === 'scale') {
-            // reuse clamp from table module via name heuristic
             const obj = transformControls.object
-            // clamp per axis
             if (obj && obj.scale) {
                 const isTop = obj.name && obj.name.startsWith('tableTop_')
                 const TOP_SCALE_MIN = 0.6
@@ -203,7 +244,6 @@ export async function init() {
                 obj.updateMatrix()
                 obj.updateMatrixWorld(true)
 
-                // lock X/Z for circle tabletop and base
                 if (obj.name === 'tableTop_circle' || obj.name === 'tableBase' || isShiftPressed) {
                     const axis = transformControls.axis
                     if (axis === 'X') obj.scale.z = obj.scale.x
@@ -213,6 +253,9 @@ export async function init() {
             }
         }
     })
+
+    trackedSchedulingFinished = true
+    checkFinishConditions()
 
     // render loop
     function tick() {

@@ -10,6 +10,19 @@
 </head>
 
 <body>
+
+    <div id="loading-screen">
+
+        <div class="loading-text">
+            <h1>☕ Coffee Table Configurator</h1>
+            <h6>by <a href="https://github.com/rospuye" target="_blank" rel="noopener noreferrer" onclick="window.open(this.href); return false;">rospuye</a></h6>
+        </div>
+
+        <video autoplay loop muted playsinline class="loading-video">
+            <source src="/animations/loading_animation.webm" type="video/mp4" />
+        </video>
+    </div>
+
     <canvas class="webgl"></canvas>
 
     <div id="nav-bar">
@@ -79,16 +92,6 @@
         <button class="help-btn" type="button" aria-label="Help">
             ?
         </button>
-
-        <!-- <div class="help-tooltip" role="tooltip" id="help-tooltip">
-            <p>
-                🎨 <strong>Click</strong> the options in the <strong>top-left menu</strong> to switch between different <strong>materials</strong> and <strong>shapes</strong>.
-                <br /><br />
-                🌀 <strong>Drag</strong> anywhere on the screen to <strong>rotate the view</strong> and explore the table from all angles.
-                <br /><br />
-                📐 <strong>Click</strong> specific <strong>parts of the table</strong>, then use the <strong>gizmo</strong> to <strong>adjust their sizes</strong>.
-            </p>
-        </div> -->
 
         <div class="help-tooltip" role="tooltip" id="help-tooltip">
             <ul class="help-list">
