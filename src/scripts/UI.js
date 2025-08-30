@@ -109,3 +109,11 @@ initMaterialControl(
     setTableTopShape,
     1 // starting with "Circle"
 );
+
+document.addEventListener("DOMContentLoaded", () => {
+    const helpBtn = document.querySelector(".help-btn");
+    helpBtn.addEventListener("click", () => {
+        const active = helpBtn.classList.toggle("active");
+        helpBtn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+});

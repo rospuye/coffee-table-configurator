@@ -109,10 +109,10 @@ export async function init() {
     scene.add(ambient)
     const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1)
     scene.add(hemi)
-    const dir1 = new THREE.DirectionalLight(0xfff4c9, 1)
+    const dir1 = new THREE.DirectionalLight(0xfff4c9, 0.5)
     dir1.position.set(1, 1, 0)
     scene.add(dir1)
-    const dir2 = new THREE.DirectionalLight(0xffffff, 1)
+    const dir2 = new THREE.DirectionalLight(0xffffff, 0.5)
     dir2.position.set(-1, -1, 0)
     scene.add(dir2)
 
@@ -126,8 +126,6 @@ export async function init() {
     } catch (e) {
         console.warn('Failed to load HDR environment', e)
     }
-
-        // hdrTex.intensity = 0.2
 
     // --- PBR texture sets ---
     const makeTextureFiles = (basePath, baseName) => ({

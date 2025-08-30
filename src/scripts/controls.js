@@ -5,7 +5,7 @@ export function createControls(camera, rendererDomElement, canvas) {
     const orbitControls = new OrbitControls(camera, canvas)
     orbitControls.enableDamping = true
     orbitControls.minDistance = 2;
-    orbitControls.maxDistance = 15;
+    orbitControls.maxDistance = 10;
 
     const transformControls = new TransformControls(camera, rendererDomElement)
     transformControls.setMode('scale')

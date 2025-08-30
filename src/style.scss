@@ -391,20 +391,22 @@ label[for="nav-toggle"] {
         height: 56px;
         border-radius: 50%;
         border: none;
-        background: #{$grey-primary}; // main button color
-        color: #fff;
+        background: #{$grey-primary};
+        color: #{$beige-primary};
         font-weight: 700;
         font-size: 1.4rem;
         display: flex;
         align-items: center;
         justify-content: center;
         box-shadow: 0 6px 18px rgba(10, 10, 10, 0.4);
-        cursor: default; // no click action
+        cursor: default;
         -webkit-appearance: none;
         appearance: none;
-        transition: transform 150ms ease, box-shadow 150ms ease;
+        transition: transform 500ms ease, box-shadow 500ms ease;
         outline: none;
         padding: 0;
+        pointer-events: none;
+        user-select: none;
 
         // subtle lift on hover/focus
         &:hover,
@@ -418,16 +420,28 @@ label[for="nav-toggle"] {
             box-shadow: 0 0 0 4px rgba(100, 150, 255, 0.18), 0 10px 26px rgba(10, 10, 10, 0.45);
             cursor: pointer;
         }
+
+        // allow clicking on touch screen devices
+        @media (pointer: coarse) and (hover: none) {
+            .help-btn {
+                pointer-events: auto;
+                cursor: pointer;
+            }
+        }
     }
 
     .help-tooltip {
         position: absolute;
-        right: 70px; // place left of button (adjust if you change button size)
-        bottom: 10px; // vertically align with the button
-        transform: translateY(6px);
+        right: 70px;
+        bottom: 10px;
+        transform: translateY(8px) scale(0.985);
         opacity: 0;
-        pointer-events: none; // so it doesn't block underlying pointer
-        transition: opacity 160ms ease, transform 160ms ease;
+        pointer-events: none;
+        transition:
+            opacity 220ms cubic-bezier(.2, .9, .25, 1),
+            transform 260ms cubic-bezier(.2, .9, .25, 1),
+            box-shadow 200ms ease;
+        transform-origin: right bottom;
         background: #{$beige-primary};
         color: #{$grey-primary};
         padding: 10px 14px;
@@ -439,16 +453,16 @@ label[for="nav-toggle"] {
         line-height: 1.35;
         box-shadow: 0 10px 30px rgba(12, 12, 12, 0.14);
         border: 1px solid rgba(16, 16, 16, 0.06);
+        will-change: opacity, transform, box-shadow;
 
         p {
             margin: 0;
         }
 
-        // little arrow pointing to the button
         &::after {
             content: "";
             position: absolute;
-            right: -8px; // sits between tooltip and button
+            right: -8px;
             bottom: 12px;
             width: 0;
             height: 0;
@@ -459,22 +473,25 @@ label[for="nav-toggle"] {
         }
     }
 
-    // show tooltip on hover or keyboard focus
+    // shown state (on hover or keyboard focus)
     &:hover .help-tooltip,
     &:focus-within .help-tooltip {
         opacity: 1;
-        transform: translateY(0);
-        pointer-events: auto;
+        transform: translateY(0) scale(1);
+        // pointer-events: auto; // enable pointer interactions when visible
+        box-shadow: 0 18px 40px rgba(12, 12, 12, 0.18);
     }
 
-    // Respect reduced motion preference
-    @media (prefers-reduced-motion: reduce) {
+    // /* reduced motion: remove transitions and jump to final state */
+    // @media (prefers-reduced-motion: reduce) {
 
-        .help-btn,
-        .help-tooltip {
-            transition: none !important;
-        }
-    }
+    //     .help-btn,
+    //     .help-tooltip {
+    //         transition: none !important;
+    //         transform: none !important;
+    //     }
+    // }
+
 
     // smaller screens - move tooltip above button
     @media (max-width: 480px) {
