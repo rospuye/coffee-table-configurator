@@ -134,7 +134,7 @@ body {
     hr {
         margin: 0;
         position: relative;
-        left: 16px;
+        left: 8px;
         width: calc(100% - 32px);
         border: none;
         // border-top: solid 1px var(--navbar-beige-secondary);
@@ -572,4 +572,8 @@ label[for="nav-toggle"] {
     width: 75px;
     height: 75px;
     object-fit: contain;
+}
+
+.smaller {
+    font-size: 0.90em;
 }
