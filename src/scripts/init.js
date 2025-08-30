@@ -235,6 +235,13 @@ export async function init() {
                 target = target.parent
             }
             if (target && targetNames.includes(target.name)) {
+                // if object already has transformControls, remove them
+                if (transformControls.object === target) {
+                    transformControls.detach()
+                    transformControls.visible = false
+                    return;
+                }
+
                 resetTransformControls(transformControls, target)
             }
         } else {
