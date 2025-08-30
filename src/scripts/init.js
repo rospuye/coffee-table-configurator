@@ -72,6 +72,16 @@ window.addEventListener('keyup', (e) => {
     if (e.key === 'Shift') isShiftPressed = false
 })
 
+function fixTextureSampling(tex) {
+    if (!tex) return;
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    tex.needsUpdate = true;
+}
+
+
 export async function init() {
     const scenePack = createScene('canvas.webgl')
     scene = scenePack.scene
@@ -153,8 +163,18 @@ export async function init() {
         track(plasterPbrPromise, 'plasterPBR')
     ])
 
-    tableMaterials.wood = buildMaterial(woodMapsRes.status === 'fulfilled' ? woodMapsRes.value : {})
-    tableMaterials.plaster = buildMaterial(plasterMapsRes.status === 'fulfilled' ? plasterMapsRes.value : {})
+    // tableMaterials.wood = buildMaterial(woodMapsRes.status === 'fulfilled' ? woodMapsRes.value : {})
+    // tableMaterials.plaster = buildMaterial(plasterMapsRes.status === 'fulfilled' ? plasterMapsRes.value : {})
+
+    const woodMaps = woodMapsRes.status === 'fulfilled' ? woodMapsRes.value : {}
+    const plasterMaps = plasterMapsRes.status === 'fulfilled' ? plasterMapsRes.value : {}
+
+    // apply sampling fixes BEFORE building materials
+    Object.entries(woodMaps).forEach(([k, tex]) => fixTextureSampling(tex, k))
+    Object.entries(plasterMaps).forEach(([k, tex]) => fixTextureSampling(tex, k))
+
+    tableMaterials.wood = buildMaterial(woodMaps)
+    tableMaterials.plaster = buildMaterial(plasterMaps)
 
     // create table and add to scene
     createTable()
