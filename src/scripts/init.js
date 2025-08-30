@@ -129,17 +129,17 @@ export async function init() {
 
     // --- PBR texture sets ---
     const makeTextureFiles = (basePath, baseName) => ({
-        ao: `${basePath}${baseName}_ao_4k.jpg`,
-        arm: `${basePath}${baseName}_arm_4k.jpg`,
-        diff: `${basePath}${baseName}_diff_4k.jpg`,
-        disp: `${basePath}${baseName}_disp_4k.png`,
-        normalEXR: `${basePath}${baseName}_nor_gl_4k.exr`,
-        roughEXR: `${basePath}${baseName}_rough_4k.exr`,
+        ao: `${basePath}${baseName}_ao_1k.jpg`,
+        arm: `${basePath}${baseName}_arm_1k.jpg`,
+        diff: `${basePath}${baseName}_diff_1k.jpg`,
+        disp: `${basePath}${baseName}_disp_1k.png`,
+        normalEXR: `${basePath}${baseName}_nor_gl_1k.exr`,
+        roughEXR: `${basePath}${baseName}_rough_1k.exr`,
     })
 
     const textureDefinitions = {
         wood: { basePath: '/textures/wood_table/', baseName: 'wood_table_001' },
-        plaster: { basePath: '/textures/plaster_wall/', baseName: 'painted_plaster_wall' }
+        plaster: { basePath: '/textures/plastered_wall/', baseName: 'plastered_wall_03' }
     }
 
     const woodFiles = makeTextureFiles(textureDefinitions.wood.basePath, textureDefinitions.wood.baseName)
