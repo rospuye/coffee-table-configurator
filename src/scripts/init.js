@@ -105,14 +105,14 @@ export async function init() {
     }
 
     // lights
-    const ambient = new THREE.AmbientLight(0xffffff, 0.3)
+    const ambient = new THREE.AmbientLight(0xffffff, 1)
     scene.add(ambient)
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.3)
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1)
     scene.add(hemi)
-    const dir1 = new THREE.DirectionalLight(0xfff4c9, 0.5)
+    const dir1 = new THREE.DirectionalLight(0xfff4c9, 1)
     dir1.position.set(1, 1, 0)
     scene.add(dir1)
-    const dir2 = new THREE.DirectionalLight(0xffffff, 0.5)
+    const dir2 = new THREE.DirectionalLight(0xffffff, 1)
     dir2.position.set(-1, -1, 0)
     scene.add(dir2)
 
@@ -121,11 +121,13 @@ export async function init() {
         const hdrPromise = loadHDRAsync('textures/pine_attic_4k.hdr')
         const hdrTex = await track(hdrPromise, 'hdrEnv')
         hdrTex.mapping = THREE.EquirectangularReflectionMapping
-        hdrTex.intensity = 0.5
         scene.environment = hdrTex
+        scene.environmentIntensity = 0.4;
     } catch (e) {
         console.warn('Failed to load HDR environment', e)
     }
+
+        // hdrTex.intensity = 0.2
 
     // --- PBR texture sets ---
     const makeTextureFiles = (basePath, baseName) => ({
