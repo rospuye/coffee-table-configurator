@@ -217,7 +217,7 @@ export async function init() {
         const dx = ev.clientX - pointerDownPos.x
         const dy = ev.clientY - pointerDownPos.y
         const distance = Math.sqrt(dx * dx + dy * dy)
-        if (dt >= 200 || distance >= 6) return
+        if (dt >= 400 || distance >= 10) return
 
         const rect = canvas.getBoundingClientRect()
         pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1
